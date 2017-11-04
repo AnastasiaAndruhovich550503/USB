@@ -15,6 +15,36 @@ class DeviceManager(QWidget):
     table_update_interval = 1000
     dev_finder = DeviceFinder()
 
+    def __init__(self, parent=None):
+        """Adds elements to widget"""
+        super(DeviceManager, self).__init__(parent)
+
+        block_device_table_label = QLabel("Block devices:")
+        mtp_device_table_label = QLabel("MTP devices:")
+        connection_log_label = QLabel("Device connection log:")
+
+        self.unmount_button = QPushButton("Unmount selected drives")
+        self.reload_mtp_list_button = QPushButton("Reload MTP list")
+        self.connection_log = QTextBrowser()
+
+        self.block_device_table_widget = QTableWidget()
+        self.mtp_device_table_widget = QTableWidget()
+        self.block_header = ["Device", "Label", "Mount point", "Total", "Free", "Used"]
+        self.mtp_header = ["Manufacturer", "Model", "Total", "Free", "Used", "Storage Description"]
+
+        self.table_view_setup(self.block_device_table_widget, self.block_header)
+        self.table_view_setup(self.mtp_device_table_widget, self.mtp_header)
+
+        self.main_layout_init(block_device_table_label, connection_log_label, mtp_device_table_label)
+        self.setWindowTitle("USB Manager")
+
+        self.usb_table = self.dev_finder.get_usb_table()
+        self.update_table_widget(self.usb_table)
+        self.reload_device_table()
+
+        self.unmount_button.pressed.connect(self.unmount_button_handler)
+        self.reload_mtp_list_button.pressed.connect(self.reload_mtp_list_button_handler)
+
     def table_view_setup(self, table_widget, header):
         table_widget.setEditTriggers(QAbstractItemView.NoEditTriggers)
         table_widget.setColumnCount(len(header))
@@ -72,7 +102,15 @@ class DeviceManager(QWidget):
         self.usb_table = self.dev_finder.get_usb_table()
         self.update_table_widget(self.usb_table)
 
-
+    def reload_device_table(self):
+        """Gather info about connected devices"""
+        new_usb_table = self.dev_finder.get_usb_table()
+        self.remove_event_check(new_usb_table)
+        self.connect_event_check(new_usb_table)
+        if self.usb_table != new_usb_table:
+            self.update_table_widget(new_usb_table)
+            self.usb_table = new_usb_table
+        QTimer.singleShot(self.table_update_interval, self.reload_device_table)
 
     def update_table_widget(self, new_usb_table):
         """Update connected devices table"""
